@@ -1,4 +1,7 @@
 ---
+- name: HAProxy | Import vars builder task
+  ansible.builtin.import_tasks: vars.yml
+
 - name: HAProxy | Import install task
   ansible.builtin.import_tasks: install.yml
 

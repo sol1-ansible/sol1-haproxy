@@ -1,0 +1,20 @@
+---
+- name: Load OS-specific defaults
+  include_vars: "{{ item }}"
+  with_first_found:
+    - files:
+        - "{{ ansible_distribution | lower }}-{{ ansible_distribution_major_version }}.yml"
+        - "{{ ansible_distribution | lower }}.yml"
+        - "default.yml"
+      paths:
+        - "{{ role_path }}/vars"
+
+- name: Set HAProxy version
+  set_fact:
+    haproxy_version: "{{ default_haproxy_version }}"
+  when: haproxy_version is not defined
+
+- name: Debug Calculated Vars
+  debug:
+    msg: 
+      haproxy_version: "{{ haproxy_version }}"

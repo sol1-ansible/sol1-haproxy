@@ -1,0 +1,7 @@
+---
+# Vars with default_ prefix are OS defaults that can be overridden. 
+# This allows the role to have OS specific defaults and also allow users to override them in their playbooks.
+# IMPORTANT: default_ vars are required for each OS to ensure the role works without users having to set required vars.
+default_haproxy_version: 3.2
+
+# Fixed Vars - These are required for the role to function and should not be overridden by users.
