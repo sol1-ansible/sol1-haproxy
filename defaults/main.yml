@@ -8,6 +8,8 @@ haproxy_addition_packages: []
 haproxy_restart_handler_state: restarted
 
 haproxy_conf_template: "etc/haproxy/haproxy.cfg.j2"
+# this is a debug option to keep the generated config file in /tmp/haproxy.cfg in case validation fails and you want to debug
+haproxy_conf_tmp_file: true
 haproxy_use_ppa: false
 
 # global section

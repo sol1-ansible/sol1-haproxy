@@ -1,4 +1,14 @@
 ---
+- name: HAProxy configuration | /tmp/haproxy.cfg file for configuration in case validation fails and you want to debug
+  ansible.builtin.template:
+    src: "{{ haproxy_conf_template }}"
+    dest: /tmp/haproxy.cfg
+    owner: root
+    group: root
+    mode: '0640'
+  when:
+    - haproxy_conf_tmp_file | default(true)
+
 - name: HAProxy configuration | Update config file
   ansible.builtin.template:
     src: "{{ haproxy_conf_template }}"
