@@ -7,7 +7,7 @@
 
 - name: HAProxy Pre-tasks | Copy HAProxy 403
   ansible.builtin.copy:
-    src: "{{ haproxy_403_file }}"
+    src: "{{ haproxy_403_file | default('haproxy-403.http') }}"
     dest: /var/www/403.http
     owner: root
     group: haproxy
