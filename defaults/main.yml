@@ -2,7 +2,7 @@
 ---
 
 # haproxy_version: 3.0
-haproxy_403_file: "files/haproxy-403.http"
+haproxy_403_file: "haproxy-403.http"
 haproxy_addition_packages: []
 
 haproxy_restart_handler_state: restarted
