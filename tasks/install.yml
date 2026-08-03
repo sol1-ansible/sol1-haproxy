@@ -1,5 +1,6 @@
+# If it is Debian add the haproxy.debian.net repo
 - name: HAProxy Install | Debian Block
-  when: ansible_facts['os_family'] == 'Debian'
+  when: ansible_facts['distribution'] == 'Debian'
   block:
     - name: HAProxy Install | Install GPG
       ansible.builtin.apt:
@@ -25,8 +26,9 @@
         state: present
         filename: "haproxy.list"
 
+# If it is Ubuntu add the vbernat PPA
 - name: HAProxy Install | Ubuntu Block
-  when: ansible_facts['os_family'] == 'Ubuntu'
+  when: ansible_facts['distribution'] == 'Ubuntu'
   block:
     - name: HAProxy Install | add repository from PPA and install its signing key
       ansible.builtin.apt:
@@ -39,6 +41,7 @@
         update_cache: true
       when: haproxy_use_ppa and haproxy_version is version_compare('2.9', '>=')
 
+# Installing from default OS repo, or from the PPA if it is Ubuntu and the version is 2.9 or higher, or from the haproxy.debian.net repo if it is Debian
 - name: HAProxy Install | Set package name
   ansible.builtin.set_fact:
     haproxy_package: "haproxy={{ haproxy_version }}.*"
