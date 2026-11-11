@@ -1,7 +1,23 @@
 # handlers file for haproxy
 ---
 - name: restart haproxy
-  service:
+  ansible.builtin.systemd:
     name: haproxy
-    state: "{{ haproxy_restart_handler_state }}"
-  when: service_default_state | default('started') == 'started'
+    state: restarted
+
+- name: restart dataplaneapi
+  ansible.builtin.systemd:
+    name: dataplaneapi
+    state: restarted
+
+- name: haproxy service
+  ansible.builtin.systemd:
+    name: haproxy
+    enabled: true
+    state: restarted
+
+- name: dataplaneapi service
+  ansible.builtin.systemd:
+    name: dataplaneapi
+    enabled: true
+    state: restarted

@@ -1,15 +1,25 @@
 # defaults file for haproxy
 ---
 
-# haproxy_version: 3.0
-haproxy_addition_packages: []
+haproxy_dataplaneapi_enabled: false
+haproxy_dataplaneapi_rebootstrap: false
 
-haproxy_restart_handler_state: restarted
+default_haproxy_version: '3.2'
+default_haproxy_config_dir: /etc/haproxy
 
-haproxy_conf_template: "etc/haproxy/haproxy.cfg.j2"
-# this is a debug option to keep the generated config file in /tmp/haproxy.cfg in case validation fails and you want to debug
-haproxy_conf_tmp_file: true
-haproxy_use_ppa: false
+default_dataplaneapi_version: '3.3.5'
+default_dataplaneapi_config_dir: /etc/dataplaneapi
+
+default_dataplaneapi_haproxy_userlist: dataplaneapi
+default_dataplaneapi_haproxy_user: dataplaneapi
+default_dataplaneapi_haproxy_password: ""
+
+default_dataplaneapi_host: 127.0.0.1
+default_dataplaneapi_port: 5555
+default_dataplaneapi_scheme: [http]
+default_dataplaneapi_haproxy_reload_delay: 5
+default_dataplaneapi_log_target: stdout
+default_dataplaneapi_log_level: info
 
 # global section
 haproxy_global_log:
@@ -20,20 +30,22 @@ haproxy_global_log:
     level: notice
 haproxy_global_stats:
   sockets:
-    - listen: /run/haproxy/admin.sock
+    - listen: "{{ _haproxy_stats_socket }}"
+      param:
+        - mode 660
+        - level admin
   timeout: 30s
 haproxy_global_user: haproxy
 haproxy_global_group: haproxy
 haproxy_global_daemon: true
 haproxy_global_ca_base: /etc/ssl/certs
-haproxy_global_crt_base: /etc/ssl/private
+haproxy_global_crt_base: "{{ _haproxy_certs_dir }}"
 haproxy_global_ssl_default_bind_ciphers: 'kEECDH+aRSA+AES:kRSA+AES:+AES256:RC4-SHA:!kEDH:!LOW:!EXP:!MD5:!aNULL:!eNULL'
 haproxy_global_ssl_default_bind_ciphersuites: ''
 haproxy_global_ssl_default_bind_options: 'no-sslv3'
 haproxy_global_ssl_default_server_ciphers: 'kEECDH+aRSA+AES:kRSA+AES:+AES256:RC4-SHA:!kEDH:!LOW:!EXP:!MD5:!aNULL:!eNULL'
 haproxy_global_ssl_default_server_ciphersuites: ''
 haproxy_global_ssl_default_server_options: 'no-sslv3'
-haproxy_global_nbproc: 1
 haproxy_global_option: []
 
 # defaults section
@@ -42,7 +54,6 @@ haproxy_defaults_mode: http
 haproxy_defaults_option:
   - httplog
   - dontlognull
-haproxy_default_server_params: []
 haproxy_defaults_timeout:
   - type: connect
     timeout: 5000
@@ -51,23 +62,13 @@ haproxy_defaults_timeout:
   - type: server
     timeout: 50000
 haproxy_defaults_errorfile:
-  - code: 400
-    file: /etc/haproxy/errors/400.http
   - code: 403
-    file: /etc/haproxy/errors/403.http
-  - code: 408
-    file: /etc/haproxy/errors/408.http
-  - code: 500
-    file: /etc/haproxy/errors/500.http
-  - code: 502
-    file: /etc/haproxy/errors/502.http
+    file: "{{ _haproxy_errors_dir }}/403.http"
   - code: 503
-    file: /etc/haproxy/errors/503.http
+    file: "{{ _haproxy_errors_dir }}/503.http"
   - code: 504
-    file: /etc/haproxy/errors/504.http
-
-# ssl (file) map
-haproxy_ssl_map: []
+    file: "{{ _haproxy_errors_dir }}/504.http"
+haproxy_defaults_server_params: []
 
 # listen section
 haproxy_listen: []

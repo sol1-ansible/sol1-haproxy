@@ -1,0 +1,18 @@
+- name: haproxy.install.debian | Add haproxy.debian.net repository
+  ansible.builtin.deb822_repository:
+    name: haproxy
+    types: deb
+    uris: https://haproxy.debian.net
+    suites: "{{ ansible_facts['distribution_release'] }}-backports-{{ _haproxy_version }}"
+    components: main
+    signed_by: https://haproxy.debian.net/bernat.debian.org.gpg
+    state: present
+
+- name: haproxy.install.debian | Install HAProxy
+  vars:
+    haproxy_package: "haproxy={{ _haproxy_version }}.*"
+  ansible.builtin.apt:
+    update_cache: true
+    name: "{{ haproxy_package }}"
+    state: present
+  notify: haproxy service

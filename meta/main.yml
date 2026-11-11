@@ -4,16 +4,21 @@ galaxy_info:
   role_name: haproxy
   author: Mischa ter Smitten
   company: Oefenweb.nl B.V.
-  description: Set up the latest version of HAProxy in Ubuntu systems
+  description: Install and configure HAProxy, optionally bootstrapped for the HAProxy Data Plane API
   license: MIT
-  min_ansible_version: 2.6.0
+  min_ansible_version: "2.15"
   platforms:
+    - name: Debian
+      versions:
+        - bookworm
+        - trixie
     - name: Ubuntu
       versions:
-        - precise
-        - trusty
-        - xenial
-        - bionic
+        - jammy
+        - noble
+    - name: EL
+      versions:
+        - "9"
   galaxy_tags:
     - system
     - clustering

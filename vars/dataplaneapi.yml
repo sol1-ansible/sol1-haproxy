@@ -1,0 +1,52 @@
+_dataplaneapi_version: "{{ dataplaneapi_version | default(default_dataplaneapi_version) }}"
+
+# Credentials the role (and anything else) uses for HTTP basic auth against the API.
+# The role adds a userlist with this name/user to haproxy.cfg unless haproxy_userlists already defines one with that name.
+_dataplaneapi_haproxy_userlist: "{{ dataplaneapi_haproxy_userlist | default(default_dataplaneapi_haproxy_userlist) }}"
+_dataplaneapi_haproxy_user: "{{ dataplaneapi_haproxy_user | default(default_dataplaneapi_haproxy_user) }}"
+_dataplaneapi_haproxy_password: "{{ dataplaneapi_haproxy_password | default(default_dataplaneapi_haproxy_password) }}"
+
+_haproxy_subfolder_list:
+  - "{{ _haproxy_errors_dir }}"
+  - "{{ _haproxy_certs_dir }}"
+  - "{{ _haproxy_acls_dir }}"
+  - "{{ _dataplaneapi_transaction_dir }}"
+  - "{{ _dataplaneapi_transaction_backups_dir }}"
+
+# Set to true for one run to make the role rewrite haproxy.cfg even though dataplaneapi already owns it
+# (e.g. to rotate the API password). Everything dataplaneapi added to haproxy.cfg is lost.
+
+_dataplaneapi_config_dir: "{{ dataplaneapi_config_dir | default(default_dataplaneapi_config_dir) }}"
+_dataplaneapi_config_file: "{{ _dataplaneapi_config_dir }}/dataplaneapi.yml"
+
+_dataplaneapi_transaction_dir: "{{ _haproxy_config_dir }}/transactions"
+_dataplaneapi_transaction_backups_dir: "{{ _dataplaneapi_transaction_dir }}/backups"
+
+
+_dataplaneapi_host: "{{ dataplaneapi_host | default(default_dataplaneapi_host) }}"
+_dataplaneapi_port: "{{ dataplaneapi_port | default(default_dataplaneapi_port) }}"
+_dataplaneapi_scheme: "{{ dataplaneapi_scheme | default(default_dataplaneapi_scheme) }}"
+_dataplaneapi_haproxy_reload_delay: "{{ dataplaneapi_haproxy_reload_delay | default(default_dataplaneapi_haproxy_reload_delay) }}"
+_dataplaneapi_log_target: "{{ dataplaneapi_log_target | default(default_dataplaneapi_log_target) }}"
+_dataplaneapi_log_level: "{{ dataplaneapi_log_level | default(default_dataplaneapi_log_level) }}"
+
+# Base URL the role uses to talk to the API from the managed host itself (v3 API).
+# 0.0.0.0 is a listen address, not something you can connect to, so it maps to loopback.
+_dataplaneapi_connect_host: "{{ '127.0.0.1' if _dataplaneapi_host == '0.0.0.0' else _dataplaneapi_host }}"
+# Basic auth header built here so the password is not a no_log module parameter: with
+# url_password the uri module masks every occurrence of the password in its results,
+# which corrupts the live config text whenever the password also appears as a name.
+_dataplaneapi_auth_header: "Basic {{ (_dataplaneapi_haproxy_user ~ ':' ~ _dataplaneapi_haproxy_password) | b64encode }}"
+_dataplaneapi_base_url: "{{ _dataplaneapi_scheme | first }}://{{ _dataplaneapi_connect_host }}:{{ _dataplaneapi_port }}/v3"
+
+_dataplaneapi_arch_map:
+  x86_64: amd64
+  aarch64: arm64
+  armv7l: arm
+  i386: i386
+  ppc64le: ppc64le
+  s390x: s390x
+_dataplaneapi_arch: "{{ _dataplaneapi_arch_map[ansible_facts['architecture']] }}"
+_dataplaneapi_pkg_ext: "{{ 'rpm' if ansible_facts['os_family'] == 'RedHat' else 'deb' }}"
+_dataplane_filename: "dataplaneapi_{{ _dataplaneapi_version }}_linux_{{ _dataplaneapi_arch }}.{{ _dataplaneapi_pkg_ext }}"
+_dataplaneapi_download_url: "https://github.com/haproxytech/dataplaneapi/releases/download/v{{ _dataplaneapi_version }}/{{ _dataplane_filename }}"

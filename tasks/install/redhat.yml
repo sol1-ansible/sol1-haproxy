@@ -1,0 +1,5 @@
+- name: haproxy.install.redhat | Install HAProxy and SELinux management tooling
+  ansible.builtin.dnf:
+    name: "{{ _redhat_haproxy_packages }}"
+    state: present
+  notify: haproxy service

@@ -1,25 +1,31 @@
 ---
-- name: HAProxy | Import vars builder task
-  ansible.builtin.import_tasks: vars.yml
+- name: haproxy.main | Load HAProxy variables
+  ansible.builtin.include_vars: haproxy.yml
 
-- name: HAProxy | Import install task
-  ansible.builtin.import_tasks: install.yml
+- name: haproxy.main | Load dataplaneapi variables if enabled
+  when: haproxy_dataplaneapi_enabled
+  ansible.builtin.include_vars: dataplaneapi.yml
 
-- name: HAProxy | Import pre_tasks task
-  ansible.builtin.import_tasks: pre_tasks.yml
+- name: haproxy.main | Load OS-specific variables
+  ansible.builtin.include_vars: "{{ item }}"
+  with_first_found:
+    - files:
+        - "{{ ansible_facts['distribution'] | lower }}-{{ ansible_facts['distribution_major_version'] }}.yml"
+        - "{{ ansible_facts['distribution'] | lower }}.yml"
+        - "{{ ansible_facts['os_family'] | lower }}.yml"
+      skip: true
 
-- name: HAProxy | Import certificates task
-  ansible.builtin.import_tasks: certificates.yml
+- name: haproxy.main | Import preflight task
+  ansible.builtin.import_tasks: preflight.yml
 
-- name: HAProxy | Import static ACL task
-  ansible.builtin.import_tasks: acl.yml
-  when: haproxy_acl_files | length > 0
+- name: haproxy.main | Import install task
+  when: _haproxy_install_required or _dataplaneapi_install_required or not _haproxy_cfg_managed_by_dpa
+  ansible.builtin.import_tasks: install/install.yml
 
-- name: HAProxy | Import configuration task
-  ansible.builtin.import_tasks: configuration.yml
+- name: haproxy.main | Import dataplaneapi config management task
+  when: _haproxy_cfg_managed_by_dpa
+  ansible.builtin.import_tasks: manage/manage_config.yml
 
-- name: HAProxy | Start and enable the service
-  ansible.builtin.service:
-    name: haproxy
-    state: "{{ service_default_state | default('started') }}"
-    enabled: "{{ service_default_enabled | default(true) | bool }}"
+- name: haproxy.main | Import dataplaneapi config sync task
+  when: _haproxy_cfg_managed_by_dpa
+  ansible.builtin.import_tasks: manage/sync_config.yml

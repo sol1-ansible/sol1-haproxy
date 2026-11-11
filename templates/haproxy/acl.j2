@@ -1,0 +1,6 @@
+# {{ ansible_managed }}
+
+# ACLs
+{% for content in acl.content | default([]) %}
+{{ content }}
+{% endfor %}

@@ -1,0 +1,38 @@
+{#- The whole config is rendered into _cfg first so blank lines can be normalised here, in the template.
+    Doing it on the file after writing (lineinfile/replace) made every run report a change and restart haproxy.
+    "#--#" marks a section boundary and becomes the single blank line between sections. -#}
+{% set _cfg %}
+# {{ ansible_managed }}
+{% if haproxy_dataplaneapi_enabled %}
+# OWNED AND MANAGED VIA DATAPLANEAPI
+# Do not hand-edit config must be managed via the API via Ansible.
+{% endif %}
+#--#
+# Global
+global
+{% include 'global.cfg.j2' %}
+#--#
+# Userlist
+{% include 'userlist.cfg.j2' %}
+{#- With dataplaneapi the bootstrap file stops after the userlist; the manage tasks set
+    _haproxy_render_full to render the whole desired config for the API to apply. -#}
+{% if not haproxy_dataplaneapi_enabled or _haproxy_render_full | default(false) %}
+#--#
+# Defaults
+defaults
+{% include 'defaults.cfg.j2' %}
+#--#
+# Resolvers
+{% include 'resolvers.cfg.j2' %}
+#--#
+# Listen
+{% include 'listen.cfg.j2' %}
+#--#
+# Frontend
+{% include 'frontend.cfg.j2' %}
+#--#
+# Backend
+{% include 'backend.cfg.j2' %}
+{% endif %}
+{% endset %}
+{{ _cfg | regex_replace('(\n[ \t]*)+\n', '\n') | replace('#--#', '') }}

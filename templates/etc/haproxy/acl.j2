@@ -1,8 +1,0 @@
-# {{ ansible_managed }}
-
-{%if item.content is defined %}
-# ACL
-{% for content in item.content | default([]) %}
-{{ content }}
-{% endfor %}
-{% endif %}

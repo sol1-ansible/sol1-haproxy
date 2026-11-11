@@ -1,0 +1,24 @@
+---
+# Vars with default_ prefix are OS defaults that can be overridden. 
+# This allows the role to have OS specific defaults and also allow users to override them in their playbooks.
+# IMPORTANT: default_ vars are required for each OS to ensure the role works without users having to set required vars.
+
+# Fixed Vars - These are required for the role to function and should not be overridden by users.
+
+_haproxy_version: "{{ haproxy_version | default(default_haproxy_version) }}"
+
+_haproxy_config_dir: "{{ haproxy_config_dir | default(default_haproxy_config_dir) }}"
+_haproxy_errors_dir: "{{ _haproxy_config_dir }}/errors"
+_haproxy_acls_dir: "{{ _haproxy_config_dir }}/acls"
+
+_haproxy_config_file: "{{ _haproxy_config_dir }}/haproxy.cfg"
+
+_default_haproxy_certs_dir: "{{ _haproxy_config_dir }}/certs"
+_haproxy_certs_dir: "{{ haproxy_certs_dir | default(_default_haproxy_certs_dir) }}"
+
+_haproxy_subfolder_list:
+  - "{{ _haproxy_errors_dir }}"
+  - "{{ _haproxy_certs_dir }}"
+  - "{{ _haproxy_acls_dir }}"
+
+_haproxy_stats_socket: /run/haproxy/admin.sock

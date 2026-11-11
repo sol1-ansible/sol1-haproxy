@@ -1,0 +1,37 @@
+---
+- name: haproxy.dataplaneapi | Write dataplaneapi.yml
+  ansible.builtin.template:
+    src: dataplaneapi/dataplaneapi.yml.j2
+    dest: "{{ _dataplaneapi_config_file }}"
+    mode: "0640"
+  notify: dataplaneapi service
+
+- name: haproxy.dataplaneapi | Flush handlers
+  ansible.builtin.meta: flush_handlers
+
+- name: haproxy.dataplaneapi | Wait for dataplaneapi to be ready
+  vars:
+    _dpa_scheme: "{{ (dataplaneapi_scheme | default(default_dataplaneapi_scheme)) | first }}"
+    _dpa_host: "{{ dataplaneapi_host | default(default_dataplaneapi_host) }}"
+    _dpa_port: "{{ dataplaneapi_port | default(default_dataplaneapi_port) }}"
+  ansible.builtin.uri:
+    url: "{{ _dpa_scheme }}://{{ '127.0.0.1' if _dpa_host == '0.0.0.0' else _dpa_host }}:{{ _dpa_port }}/v3/info"
+    method: GET
+    url_username: "{{ _dataplaneapi_haproxy_user }}"
+    url_password: "{{ _dataplaneapi_haproxy_password }}"
+    force_basic_auth: true
+    status_code: 200
+  register: _dpa_info
+  retries: 12
+  delay: 5
+  until: _dpa_info.status | default(0) == 200
+
+- name: haproxy.dataplaneapi | Mark that the dataplaneapi has been deployed
+  ansible.builtin.copy:
+    dest: "{{ _haproxy_config_dir }}/.dpa"
+    content: "haproxy.cfg is managed by dataplaneapi\n"
+    mode: "0444"
+
+- name: haproxy.dataplaneapi | Set _haproxy_cfg_managed_by_dpa to true after installing dataplaneapi
+  ansible.builtin.set_fact:
+    _haproxy_cfg_managed_by_dpa: true

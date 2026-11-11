@@ -71,8 +71,8 @@ This role is currently still a WIP being adapted for a more streamlined approach
 * `haproxy_defaults_compression`: [optional]: Compression declarations
 * `haproxy_defaults_compression.{}.name`: [required]: The compression name (e.g. `algo`, `type`, `offload`)
 * `haproxy_defaults_compression.{}.value`: [required]: The compression value, (e.g. if name = algo : one of this values `identity`, `gzip`, `deflate`, `raw-deflate` / if name = type : list of mime type separated by space for example `text/html text/plain text/css` / if name = `offload` value is empty)
-* `haproxy_default_server_params`: [optional]: Default server backend parameters passed to each backend/listen server.
-* `haproxy_default_raw_options`: [default: `[]`]: Additional arbitrary lines to insert in the section
+* `haproxy_defaults_server_params`: [optional]: Default server backend parameters passed to each backend/listen server.
+* `haproxy_defaults_raw_options`: [default: `[]`]: Additional arbitrary lines to insert in the section
 
 * `haproxy_ssl_map`: [default: `[]`]: SSL declarations
 * `haproxy_ssl_map.{n}.src`: The local path of the file to copy, can be absolute or relative (e.g. `../../../files/haproxy/etc/haproxy/ssl/star-example-com.pem`)

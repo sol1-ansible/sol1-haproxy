@@ -1,0 +1,27 @@
+config_version: 2
+dataplaneapi:
+  host: {{ _dataplaneapi_host }}
+  port: {{ _dataplaneapi_port }}
+  scheme: {{ _dataplaneapi_scheme }}
+  userlist:
+    userlist: {{ _dataplaneapi_haproxy_userlist }}
+  transaction:
+    transaction_dir: {{ _dataplaneapi_transaction_dir }}
+    backups_number: 10
+    backups_dir: {{ _dataplaneapi_transaction_backups_dir }}
+  resources:
+    ssl_certs_dir: {{ _haproxy_certs_dir }}
+haproxy:
+  config_file: {{ _haproxy_config_file }}
+  haproxy_bin: /usr/sbin/haproxy
+  reload:
+    reload_delay: {{ _dataplaneapi_haproxy_reload_delay }}
+    service_name: haproxy
+    reload_cmd: systemctl reload haproxy
+    restart_cmd: systemctl restart haproxy
+    status_cmd: systemctl status haproxy
+    validate_cmd: haproxy -c -f {{ _haproxy_config_file }}
+    reload_strategy: systemd
+log_targets:
+  - log_to: {{ _dataplaneapi_log_target  }}
+    log_level: {{ _dataplaneapi_log_level }}

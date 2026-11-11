@@ -1,0 +1,92 @@
+---
+# Push the desired configuration to HAProxy through the Data Plane API as one change.
+#
+# The dataset is rendered with the role's own templates (all sections, plus the
+# dataplaneapi userlist) and compared with what the API reports as the live config
+# (_dpa_raw_response from manage_config.yml). Only when they differ is the rendered
+# file POSTed to /configuration/raw with the current version, which dataplaneapi
+# validates, writes and reloads. The diff is reported either way.
+#
+# Verified against the dataplaneapi 3.3.5 OpenAPI spec:
+#   POST /v3/services/haproxy/configuration/raw?version=N  (text/plain body)
+#        -> 201 applied without reload, 202 reload requested (Reload-ID header)
+#   GET  /v3/services/haproxy/reloads/{id} -> {status: in_progress|succeeded|failed, response}
+
+- name: haproxy.sync | Render the desired haproxy.cfg from the dataset
+  ansible.builtin.template:
+    src: haproxy/haproxy.cfg.j2
+    dest: "{{ _haproxy_config_file }}.ansible"
+    owner: "{{ haproxy_global_user }}"
+    group: "{{ haproxy_global_group }}"
+    mode: '0640'
+  vars:
+    _haproxy_render_full: true
+
+- name: haproxy.sync | Read the rendered desired config back
+  ansible.builtin.slurp:
+    src: "{{ _haproxy_config_file }}.ansible"
+  register: _dpa_desired
+
+- name: haproxy.sync | Compare the desired config with the live one, section by section
+  ansible.builtin.set_fact:
+    _dpa_cfg_diff: "{{ (_dpa_desired.content | b64decode) | haproxy_cfg_diff(_dpa_raw_response.content) }}"
+
+- name: haproxy.sync | Show what differs
+  ansible.builtin.debug:
+    msg:
+      in_sync: "{{ _dpa_cfg_diff.in_sync }}"
+      create: "{{ _dpa_cfg_diff.create }}"
+      delete: "{{ _dpa_cfg_diff.delete }}"
+      modify: "{{ _dpa_cfg_diff.modify }}"
+      unchanged: "{{ _dpa_cfg_diff.unchanged | length }}"
+
+- name: haproxy.sync | Push the desired config through the API
+  when: not _dpa_cfg_diff.in_sync
+  block:
+    - name: haproxy.sync | POST the rendered config as one change (version-checked)
+      ansible.builtin.uri:
+        url: "{{ _dataplaneapi_base_url }}/services/haproxy/configuration/raw?version={{ _dpa_current_config.version }}"
+        method: POST
+        src: "{{ _haproxy_config_file }}.ansible"
+        remote_src: true
+        headers:
+          Content-Type: text/plain
+          Authorization: "{{ _dataplaneapi_auth_header }}"
+        status_code: [201, 202]
+        return_content: true
+      register: _dpa_push
+      changed_when: true
+
+    - name: haproxy.sync | Wait for the HAProxy reload requested by the API to finish
+      when: _dpa_push.status == 202
+      ansible.builtin.uri:
+        url: "{{ _dataplaneapi_base_url }}/services/haproxy/reloads/{{ _dpa_push.reload_id }}"
+        headers:
+          Authorization: "{{ _dataplaneapi_auth_header }}"
+        return_content: true
+      register: _dpa_reload
+      retries: "{{ (_dataplaneapi_haproxy_reload_delay | int) + 12 }}"
+      delay: 2
+      until: _dpa_reload.json.status | default('in_progress') != 'in_progress'
+
+    - name: haproxy.sync | Fail if the reload did not succeed
+      when: _dpa_push.status == 202
+      ansible.builtin.assert:
+        that: _dpa_reload.json.status == 'succeeded'
+        fail_msg: "dataplaneapi reload {{ _dpa_push.reload_id }} {{ _dpa_reload.json.status }}: {{ _dpa_reload.json.response | default('') }}"
+
+    - name: haproxy.sync | Re-read the live config after the push
+      ansible.builtin.uri:
+        url: "{{ _dataplaneapi_base_url }}/services/haproxy/configuration/raw"
+        headers:
+          Authorization: "{{ _dataplaneapi_auth_header }}"
+        return_content: true
+      register: _dpa_raw_after
+
+    - name: haproxy.sync | Confirm the live config now matches the dataset
+      vars:
+        _after: "{{ (_dpa_desired.content | b64decode) | haproxy_cfg_diff(_dpa_raw_after.content) }}"
+      ansible.builtin.assert:
+        that: _after.in_sync
+        fail_msg: "live config still differs after the push: {{ _after | to_json }}"
+        success_msg: "live config now version {{ _dpa_raw_after.configuration_version | default('?') }} and in sync with the dataset"

@@ -1,0 +1,77 @@
+---
+- name: haproxy.configuration | Create required directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ haproxy_global_user }}"
+    group: "{{ haproxy_global_group }}"
+    mode: '0755'
+  loop: "{{ _haproxy_subfolder_list }}"
+
+- name: haproxy.configuration | Write certificates out if they are defined
+  ansible.builtin.copy:
+    content: "{{ item.content }}"
+    dest: "{{ _haproxy_certs_dir }}/{{ item.name }}"
+    owner: "{{ haproxy_global_user }}"
+    group: "{{ haproxy_global_group }}"
+    mode: '0640'
+  with_items:
+    - "{{ certificates }}"
+  when: certificates is defined
+  no_log: true
+
+- name: haproxy.configuration | Copy default error files
+  ansible.builtin.copy:
+    src: "files/{{ item.code }}.http"
+    dest: "{{ item.file }}"
+    owner: "{{ haproxy_global_user }}"
+    group: "{{ haproxy_global_group }}"
+    mode: '0644'
+  loop: "{{ haproxy_defaults_errorfile }}"
+
+- name: haproxy.configuration | Write ACL files out if they are defined
+  when: haproxy_acl_files | length > 0
+  vars:
+    _acl_dest: "{{ acl.dest if acl.dest is defined else _haproxy_acls_dir ~ '/' ~ acl.name }}"
+  ansible.builtin.template:
+    src: haproxy/acl.j2
+    dest: "{{ _acl_dest }}"
+    owner: "{{ haproxy_global_user }}"
+    group: "{{ haproxy_global_group }}"
+    mode: '0640'
+  loop: "{{ haproxy_acl_files }}"
+  loop_control:
+    loop_var: acl
+    label: "{{ _acl_dest }}"
+
+- name: haproxy.configuration | Remove the dataplaneapi marker when dataplaneapi is disabled
+  ansible.builtin.file:
+    path: "{{ _haproxy_config_dir }}/.dpa"
+    state: absent
+  when: not haproxy_dataplaneapi_enabled
+
+- name: haproxy.configuration | Block to write out the configuration
+  when: not _haproxy_cfg_managed_by_dpa
+  block:
+    - name: haproxy.configuration | Update config file
+      ansible.builtin.template:
+        src: "haproxy/haproxy.cfg.j2"
+        dest: "{{ _haproxy_config_file }}"
+        owner: "{{ haproxy_global_user }}"
+        group: "{{ haproxy_global_group }}"
+        mode: '0640'
+        validate: 'haproxy -f %s -c'
+      notify: restart haproxy
+
+  rescue:
+    - name: haproxy.configuration | Create /tmp/haproxy.cfg file for debugging if validation fails
+      ansible.builtin.template:
+        src: "haproxy/haproxy.cfg.j2"
+        dest: /tmp/haproxy.cfg
+        owner: "{{ haproxy_global_user }}"
+        group: "{{ haproxy_global_group }}"
+        mode: '0640'
+
+    - name: haproxy.configuration | Still fail the task if validation fails after rescue tasks complete
+      ansible.builtin.fail:
+        msg: "'{{ ansible_failed_task.name }}' failed: {{ ansible_failed_result.msg | default('see previous output') }}"

@@ -1,0 +1,85 @@
+---
+# Read the configuration HAProxy is currently running from the Data Plane API (v3).
+# Everything lands in _dpa_current_config so later tasks can diff it against the
+# inventory and open a transaction (POST transactions?version=_dpa_current_config.version)
+# to add or remove what differs.
+#
+# Verified against the dataplaneapi 3.3.5 OpenAPI spec:
+#   GET /v3/services/haproxy/configuration/version    -> integer
+#   GET /v3/services/haproxy/configuration/raw        -> text/plain, Configuration-Version/-Checksum headers
+#   GET /v3/services/haproxy/configuration/<section>?full_section=true -> JSON list, each object carrying its
+#       child resources: defaults.acl_list, resolvers.nameservers, userlists.users/groups,
+#       frontends.binds/acl_list/backend_switching_rule_list (use_backend), backends.servers/acl_list
+
+- name: haproxy.manage | Write ACL files out if they are defined
+  when: haproxy_acl_files | length > 0
+  vars:
+    _acl_dest: "{{ acl.dest if acl.dest is defined else _haproxy_acls_dir ~ '/' ~ acl.name }}"
+  ansible.builtin.template:
+    src: haproxy/acl.j2
+    dest: "{{ _acl_dest }}"
+    owner: "{{ haproxy_global_user }}"
+    group: "{{ haproxy_global_group }}"
+    mode: '0640'
+  loop: "{{ haproxy_acl_files }}"
+  loop_control:
+    loop_var: acl
+    label: "{{ _acl_dest }}"
+
+- name: haproxy.manage | Get the current configuration version
+  ansible.builtin.uri:
+    url: "{{ _dataplaneapi_base_url }}/services/haproxy/configuration/version"
+    method: GET
+    headers:
+      Authorization: "{{ _dataplaneapi_auth_header }}"
+    return_content: true
+    status_code: 200
+  register: _dpa_version_response
+
+- name: haproxy.manage | Get the current raw haproxy.cfg
+  ansible.builtin.uri:
+    url: "{{ _dataplaneapi_base_url }}/services/haproxy/configuration/raw"
+    method: GET
+    headers:
+      Authorization: "{{ _dataplaneapi_auth_header }}"
+    return_content: true
+    status_code: 200
+  register: _dpa_raw_response
+
+- name: haproxy.manage | Get each configuration section with its child resources
+  ansible.builtin.uri:
+    url: "{{ _dataplaneapi_base_url }}/services/haproxy/configuration/{{ item }}?full_section=true"
+    method: GET
+    headers:
+      Authorization: "{{ _dataplaneapi_auth_header }}"
+    return_content: true
+    status_code: 200
+  loop:
+    - defaults
+    - resolvers
+    - frontends
+    - backends
+  register: _dpa_section_response
+
+- name: haproxy.manage | Collect the current configuration into one fact
+  vars:
+    _dpa_sections: "{{ dict(_dpa_section_response.results | map(attribute='item')
+                           | zip(_dpa_section_response.results | map(attribute='json'))) }}"
+  ansible.builtin.set_fact:
+    _dpa_current_config:
+      version: "{{ _dpa_version_response.json | int }}"
+      checksum: "{{ _dpa_raw_response.configuration_checksum | default('') }}"
+      defaults: "{{ _dpa_sections.defaults }}"
+      resolvers: "{{ _dpa_sections.resolvers }}"
+      frontends: "{{ _dpa_sections.frontends }}"
+      backends: "{{ _dpa_sections.backends }}"
+
+- name: haproxy.manage | Show what HAProxy is currently running
+  ansible.builtin.debug:
+    msg:
+      version: "{{ _dpa_current_config.version }}"
+      checksum: "{{ _dpa_current_config.checksum }}"
+      defaults: "{{ _dpa_current_config.defaults | map(attribute='name') | list }}"
+      resolvers: "{{ _dpa_current_config.resolvers | map(attribute='name') | list }}"
+      frontends: "{{ _dpa_current_config.frontends | map(attribute='name') | list }}"
+      backends: "{{ _dpa_current_config.backends | map(attribute='name') | list }}"

@@ -1,6 +1,7 @@
 # test file for haproxy
 ---
-- hosts: localhost
+- name: HAProxy managed entirely by Ansible
+  hosts: localhost
   connection: local
   become: true
   roles:
@@ -12,7 +13,7 @@
       - server-state-file /tmp/haproxy.state
 
     # default section
-    haproxy_default_raw_options:
+    haproxy_defaults_raw_options:
       - load-server-state-from-file global
 
     # front-end section
@@ -22,11 +23,6 @@
           - listen: '0.0.0.0:80'
         mode: http
         default_backend: webservers
-        reqrep:
-          - search: "^Host:\\ (.*)"
-            string: "Host:\\ foo.com"
-        raw_options:
-          - rspideny ^Content-type:\\.*/ms-word
 
     # back-end section
     haproxy_backend:
@@ -37,8 +33,6 @@
           - forwardfor
           - 'httpchk HEAD / HTTP/1.1\r\nHost:localhost'
         server: []
-        raw_options:
-          - rspdeny ^Content-type:\\.*/ms-word
 
     # user-lists section
     haproxy_userlists:
@@ -55,19 +49,37 @@
             groups:
               - test_grp2
 
-    # ACL files
-    haproxy_acl_files:
-      - dest: /etc/haproxy/acl/ported-paths.list
-        content:
-          - |
-            ^/users/add_player$
-            ^/users/view.*$
+    # ACL files (written to {{ _haproxy_acls_dir }}/<name>)
+    haproxy_acls:
+      - name: ported-paths.list
+        ips:
+          - ip: ^/users/add_player$
+            comment: player signup
+          - ip: ^/users/view.*$
+      - name: api.map
+        ips:
+          - ip: v1.0 be_alpha
+          - ip: v1.1 be_bravo
+          - ip: v2.5 be_charlie
+          - ip: v2.2 be_alpha
+          - ip: v1.1 be_delta
 
-      - dest: /etc/haproxy/acl/api.map
-        content:
-          - |
-            v1.0 be_alpha
-            v1.1 be_bravo
-            v2.5 be_charlie
-            v2.2 be_alpha
-            v1.1 be_delta
+- name: HAProxy bootstrapped for dataplaneapi
+  hosts: localhost
+  connection: local
+  become: true
+  roles:
+    - ../../
+  vars:
+    haproxy_dataplaneapi_enabled: true
+    dataplaneapi_haproxy_password: testpassword
+
+    # Anything below the global/userlist sections is left to dataplaneapi, so only
+    # a userlist is given here to prove it survives alongside the dataplaneapi one.
+    haproxy_userlists:
+      - name: test_userlist
+        users:
+          - name: testuser2
+            insecure_password: secrete
+            groups:
+              - test_grp2

@@ -24,6 +24,7 @@ Thumbs.db
 .vagrant/
 vagrant_ansible_inventory_*
 ansible.cfg
+.ansible/
 
 # Other files #
 ###############

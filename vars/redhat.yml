@@ -1,0 +1,6 @@
+_redhat_haproxy_packages:
+  - haproxy
+  - policycoreutils-python-utils
+  - python3-libselinux
+
+_haproxy_stats_socket: /var/lib/haproxy/stats

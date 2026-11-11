@@ -1,0 +1,28 @@
+- name: haproxy.install | Install Block
+  when: _haproxy_install_required
+  block:
+    - name: haproxy.install | Debian
+      when: ansible_facts['distribution'] == 'Debian'
+      ansible.builtin.import_tasks: install/debian.yml
+
+    - name: haproxy.install | Ubuntu
+      when: ansible_facts['distribution'] == 'Ubuntu'
+      ansible.builtin.import_tasks: install/ubuntu.yml
+
+    - name: haproxy.install | Redhat
+      when: ansible_facts['os_family'] == 'RedHat'
+      ansible.builtin.import_tasks: install/redhat.yml
+
+- name: haproxy.main | Import base haproxy configuration task
+  ansible.builtin.import_tasks: install/configure_haproxy.yml
+
+# Install the dataplaneapi package if enabled and not already at the requested version
+- name: haproxy.install | Dataplaneapi Install Block
+  when: haproxy_dataplaneapi_enabled
+  block:
+    - name: haproxy.install | Run the dataplaneapi install tasks
+      when: _dataplaneapi_install_required
+      ansible.builtin.import_tasks: install/dataplaneapi.yml
+
+    - name: haproxy.main | Import base dataplaneapi configuration task
+      ansible.builtin.import_tasks: install/configure_dataplaneapi.yml
